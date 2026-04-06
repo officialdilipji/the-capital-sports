@@ -35,7 +35,7 @@ import {
   Droplets,
   AlertTriangle
 } from 'lucide-react';
-import { Database, Member, MembershipType } from '@/lib/types';
+import { Database, Member, MembershipType, Payment, AdminConfig } from '@/lib/types';
 import MembershipCard from './MembershipCard';
 import { getDirectImageUrl } from '@/lib/utils';
 import { downloadCardAsPDF, printCard } from '@/lib/cardUtils';
