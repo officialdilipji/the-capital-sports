@@ -241,7 +241,7 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
         const parts = cleanDateStr.split(/[\/\-\s:]/);
         
         if (parts.length >= 3) {
-          let d, m, y, h = 0, min = 0, s = 0;
+          let d = 0, m = 0, y = 0, h = 0, min = 0, s = 0;
           
           if (parts[0].length === 4) {
             // YYYY/MM/DD
