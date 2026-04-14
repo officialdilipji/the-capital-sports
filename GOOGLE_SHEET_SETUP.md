@@ -14,7 +14,7 @@ Follow these steps to connect your application to Google Sheets for real-time da
 *(Add an initial row: `s1`, `Admin`, `Admin`, `0000000000`, `admin123`)*
 
 ### Tab: `Payments`
-`id`, `memberId`, `amount`, `method`, `transactionId`, `status`, `date`, `type`, `cashStaffName`, `receivedAmount`
+`id`, `memberId`, `memberName`, `amount`, `method`, `transactionId`, `status`, `date`, `type`, `cashStaffName`, `receivedAmount`
 
 ### Tab: `Maintenance`
 `id`, `staffId`, `date`, `chemicals`, `cleaning`, `repairs`
@@ -134,7 +134,7 @@ function handleRequest(method, e) {
           const pSheet = getOrCreateSheet(SS, 'Payments');
           const p = data.payment;
           pSheet.appendRow([
-            p.id, p.memberId, p.amount, p.method, p.transactionId || '', 
+            p.id, p.memberId, p.memberName || '', p.amount, p.method, p.transactionId || '', 
             p.status || 'Pending', p.date, p.type, p.cashStaffName || '', p.receivedAmount || ''
           ]);
         }
@@ -301,7 +301,7 @@ function getOrCreateSheet(SS, name) {
     if (name === 'Config') sheet.appendRow(['key', 'value']);
     if (name === 'Guests') sheet.appendRow(['id', 'name', 'timing', 'amount', 'status', 'date']);
     if (name === 'Attendance') sheet.appendRow(['id', 'memberId', 'memberName', 'date', 'checkIn', 'checkOut', 'slot', 'status']);
-    if (name === 'Payments') sheet.appendRow(['id', 'memberId', 'amount', 'method', 'transactionId', 'status', 'date', 'type', 'cashStaffName', 'receivedAmount']);
+    if (name === 'Payments') sheet.appendRow(['id', 'memberId', 'memberName', 'amount', 'method', 'transactionId', 'status', 'date', 'type', 'cashStaffName', 'receivedAmount']);
   }
   return sheet;
 }

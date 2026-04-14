@@ -8,6 +8,7 @@ import * as z from 'zod';
 import { motion, AnimatePresence } from 'motion/react';
 import { UserPlus, Shield, CheckCircle2, CreditCard, Banknote, QrCode, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Database, MembershipType, Payment } from '@/lib/types';
+import { slots } from '@/lib/constants';
 import { QRCodeCanvas } from 'qrcode.react';
 
 const schema = z.object({
@@ -60,11 +61,6 @@ const compressImage = (base64Str: string, maxWidth = 200, maxHeight = 200, quali
   });
 };
 
-const slots = [
-  'Morning 06:00-06:45AM', 'Morning 07:00-07:45AM', 'Morning 08:00-08:45AM', 'Morning 09:00-09:45AM',
-  'Evening 05:00-05:45PM', 'Evening 06:00-06:45PM', 'Evening 07:00-07:45PM', 'Evening 08:00-08:45PM'
-];
-
 export default function RegistrationForm({ db, onUpdate, role, currentUser }: { db: Database, onUpdate: () => void, role?: string | null, currentUser?: any }) {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
@@ -74,25 +70,12 @@ export default function RegistrationForm({ db, onUpdate, role, currentUser }: { 
   const [isCompressing, setIsCompressing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Cash'>('UPI');
 
-  // DOB state for custom picker
-  const [dobYear, setDobYear] = useState('');
-  const [dobMonth, setDobMonth] = useState('');
-  const [dobDay, setDobDay] = useState('');
-
-  const years = Array.from({ length: 100 }, (_, i) => (new Date().getFullYear() - i).toString());
-  const months = [
-    { v: '01', l: 'January' }, { v: '02', l: 'February' }, { v: '03', l: 'March' },
-    { v: '04', l: 'April' }, { v: '05', l: 'May' }, { v: '06', l: 'June' },
-    { v: '07', l: 'July' }, { v: '08', l: 'August' }, { v: '09', l: 'September' },
-    { v: '10', l: 'October' }, { v: '11', l: 'November' }, { v: '12', l: 'December' }
-  ];
-  const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0'));
-
   const { register, handleSubmit, formState: { errors }, watch, setValue, reset, trigger, setError } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       membershipType: '1Month' as MembershipType,
       gender: 'Male' as any,
+      dob: '',
       joiningDate: new Date().toISOString().split('T')[0],
       agreedToTerms: false,
       photoUrl: '',
@@ -112,14 +95,6 @@ export default function RegistrationForm({ db, onUpdate, role, currentUser }: { 
   const planAmount = db.adminConfig.amounts[selectedPlan] || 0;
   const upiId = db.adminConfig.upiId || 'capitalsports@upi';
   const upiUrl = `upi://pay?pa=${upiId}&pn=TheCapitalSports&am=${planAmount}&cu=INR`;
-
-  React.useEffect(() => {
-    if (dobYear && dobMonth && dobDay) {
-      setValue('dob', `${dobYear}-${dobMonth}-${dobDay}`, { shouldValidate: true });
-    } else {
-      setValue('dob', '', { shouldValidate: true });
-    }
-  }, [dobYear, dobMonth, dobDay, setValue]);
 
   // Background sync retry for cached registrations
   React.useEffect(() => {
@@ -227,6 +202,7 @@ export default function RegistrationForm({ db, onUpdate, role, currentUser }: { 
     
     // Create payment object
     const payment: Partial<Payment> = {
+      memberName: data.name,
       amount: planAmount,
       method: paymentMethod,
       date: new Date().toISOString(),
@@ -344,32 +320,11 @@ export default function RegistrationForm({ db, onUpdate, role, currentUser }: { 
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Date of Birth</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <select 
-                        value={dobDay} 
-                        onChange={(e) => setDobDay(e.target.value)}
-                        className="p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
-                      >
-                        <option value="">Day</option>
-                        {days.map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                      <select 
-                        value={dobMonth} 
-                        onChange={(e) => setDobMonth(e.target.value)}
-                        className="p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
-                      >
-                        <option value="">Month</option>
-                        {months.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
-                      </select>
-                      <select 
-                        value={dobYear} 
-                        onChange={(e) => setDobYear(e.target.value)}
-                        className="p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm"
-                      >
-                        <option value="">Year</option>
-                        {years.map(y => <option key={y} value={y}>{y}</option>)}
-                      </select>
-                    </div>
+                    <input 
+                      type="date" 
+                      {...register('dob')} 
+                      className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                    />
                     {errors.dob && <p className="text-red-500 text-xs mt-1">{errors.dob.message}</p>}
                   </div>
                 </div>

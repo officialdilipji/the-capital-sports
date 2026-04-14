@@ -36,6 +36,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { Database, Member, MembershipType, Payment, AdminConfig } from '@/lib/types';
+import { slots } from '@/lib/constants';
 import MembershipCard from './MembershipCard';
 import { getDirectImageUrl } from '@/lib/utils';
 import { downloadCardAsPDF, printCard } from '@/lib/cardUtils';
@@ -146,6 +147,7 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
   const [searchTerm, setSearchTerm] = useState('');
   const [attendanceSearch, setAttendanceSearch] = useState('');
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
   const [renewingMemberId, setRenewingMemberId] = useState<string | null>(null);
   const [memberToDeleteId, setMemberToDeleteId] = useState<string | null>(null);
   const [receiptPayment, setReceiptPayment] = useState<Payment | null>(null);
@@ -153,6 +155,7 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
   const [staffToDelete, setStaffToDelete] = useState<any | null>(null);
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [showAddGuest, setShowAddGuest] = useState(false);
+  const [isManualAmount, setIsManualAmount] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingReceipt, setIsGeneratingReceipt] = useState(false);
@@ -355,6 +358,9 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
     const amount = Number(formData.get('amount'));
     const transactionId = formData.get('transactionId') as string;
 
+    const member = db.members.find(m => m.id === renewingMemberId);
+    if (!member) return;
+
     try {
       const res = await fetch('/api/data', {
         method: 'POST',
@@ -362,6 +368,7 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
         body: JSON.stringify({
           type: 'renew',
           memberId: renewingMemberId,
+          memberName: member.name,
           membershipType,
           method,
           amount,
@@ -553,7 +560,9 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
     const formData = new FormData(e.currentTarget);
     const guestData = {
       name: formData.get('name') as string,
+      contact: formData.get('contact') as string,
       timing: formData.get('timing') as string,
+      membershipType: formData.get('membershipType') as MembershipType,
       amount: Number(formData.get('amount')),
       date: new Date().toISOString().split('T')[0]
     };
@@ -617,7 +626,26 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
     { label: 'Total Members', value: db.members.length, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
     { label: 'Currently In', value: db.attendance?.filter(a => a.status === 'In').length || 0, icon: UserCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { label: 'Pending Approval', value: db.members.filter(m => m.status === 'Pending').length, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-    ...(isAdmin ? [{ label: 'Revenue (MTD)', value: `₹${db.payments.reduce((acc, p) => acc + p.amount, 0)}`, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50' }] : []),
+    ...(isAdmin ? [{ 
+      label: 'Revenue (MTD)', 
+      value: `₹${(db.payments || [])
+        .filter(p => {
+          const pDate = new Date(p.date);
+          const now = new Date();
+          const isCurrentMonth = pDate.getMonth() === now.getMonth() && pDate.getFullYear() === now.getFullYear();
+          // Count revenue for existing members OR guests
+          const memberExists = db.members.some(m => m.id === p.memberId);
+          const guestExists = db.guests.some(g => g.id === p.memberId);
+          return isCurrentMonth && (memberExists || guestExists);
+        })
+        .reduce((acc, p) => {
+          const amt = Number(p.amount);
+          return acc + (isNaN(amt) || amt < 0 ? 0 : amt);
+        }, 0)}`, 
+      icon: TrendingUp, 
+      color: 'text-indigo-600', 
+      bg: 'bg-indigo-50' 
+    }] : []),
   ];
 
   // Chart Data Preparation
@@ -656,15 +684,15 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
   return (
     <div className="space-y-8">
       {/* Stats Grid */}
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${isAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-6`}>
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4 md:gap-6`}>
         {stats.map((stat) => (
-          <div key={stat.label} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
+          <div key={stat.label} className="bg-white p-5 md:p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
             <div className={`p-3 rounded-2xl ${stat.bg} ${stat.color}`}>
               <stat.icon size={24} />
             </div>
             <div>
-              <p className="text-sm text-slate-500 font-medium">{stat.label}</p>
-              <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+              <p className="text-xs md:text-sm text-slate-500 font-medium">{stat.label}</p>
+              <p className="text-xl md:text-2xl font-bold text-slate-900">{stat.value}</p>
             </div>
           </div>
         ))}
@@ -933,15 +961,12 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                             <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 overflow-hidden" style={{ position: 'relative' }}>
                               {member.photoUrl ? (
                                 <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                                  <img 
+                                  <Image 
                                     src={getDirectImageUrl(member.photoUrl)} 
                                     alt={member.name} 
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    fill
+                                    style={{ objectFit: 'cover' }}
                                     referrerPolicy="no-referrer" 
-                                    onError={(e) => {
-                                      (e.target as HTMLImageElement).style.display = 'none';
-                                      (e.target as HTMLImageElement).parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center text-slate-400 font-bold">${member.name[0]}</div>`;
-                                    }}
                                   />
                                 </div>
                               ) : (
@@ -1135,7 +1160,7 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                             {formatDateTime(payment.date)}
                           </td>
                           <td className="py-4">
-                            <p className="font-bold text-slate-900">{member?.name || 'Unknown'}</p>
+                            <p className="font-bold text-slate-900">{payment.memberName || member?.name || 'Unknown'}</p>
                             <p className="text-xs text-slate-500">{member?.contact || payment.memberId}</p>
                           </td>
                           <td className="py-4">
@@ -1145,11 +1170,11 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                           <td className="py-4">
                             <div className="flex flex-col gap-1">
                               <span className={`px-3 py-1 rounded-full text-xs font-bold w-fit ${
-                                payment.method?.includes('UPI') ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'
+                                String(payment.method || '').includes('UPI') ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'
                               }`}>
                                 {payment.method}
                               </span>
-                              {(payment.method?.includes('Cash') || !payment.method) && (
+                              {(String(payment.method || '').includes('Cash') || !payment.method) && (
                                 <div className="flex flex-col bg-amber-50 p-2 rounded-lg border border-amber-100 mt-1">
                                   <span className="text-[10px] font-bold text-amber-800 uppercase">Received By:</span>
                                   <span className="text-xs font-medium text-amber-900">
@@ -1229,7 +1254,10 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                   <p className="text-sm text-slate-500">Approval required for temporary pool access.</p>
                 </div>
                 <button 
-                  onClick={() => setShowAddGuest(true)}
+                  onClick={() => {
+                    setIsManualAmount(false);
+                    setShowAddGuest(true);
+                  }}
                   className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2"
                 >
                   <Plus size={16} /> Add Guest
@@ -1240,6 +1268,7 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                   <thead>
                     <tr className="text-slate-400 text-sm uppercase tracking-wider">
                       <th className="pb-4 font-bold">Guest Name</th>
+                      <th className="pb-4 font-bold">Membership</th>
                       <th className="pb-4 font-bold">Timing</th>
                       <th className="pb-4 font-bold">Amount</th>
                       <th className="pb-4 font-bold">Status</th>
@@ -1248,17 +1277,37 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {db.guests?.map((guest: any) => (
-                      <tr key={guest.id}>
-                        <td className="py-4 font-bold">{guest.name}</td>
-                        <td className="py-4 text-sm">{guest.timing}</td>
-                        <td className="py-4 text-sm font-bold">₹{guest.amount}</td>
+                      <tr key={guest.id} className="hover:bg-slate-50 transition-colors">
                         <td className="py-4">
-                          <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${guest.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                          <p className="font-bold text-slate-900">{guest.name}</p>
+                          <p className="text-xs text-slate-500">{guest.contact || 'No contact'}</p>
+                        </td>
+                        <td className="py-4">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-blue-600">{guest.membershipType || 'One-time'}</span>
+                            {guest.expiryDate && (
+                              <span className="text-[10px] text-slate-400">Expires: {formatDate(guest.expiryDate)}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 text-sm text-slate-600">{guest.timing}</td>
+                        <td className="py-4 text-sm font-bold text-slate-900">₹{guest.amount}</td>
+                        <td className="py-4">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${guest.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
                             {guest.status}
                           </span>
                         </td>
                         <td className="py-4">
                           <div className="flex items-center gap-3">
+                            {guest.status === 'Approved' && (
+                              <button 
+                                onClick={() => setSelectedGuestId(guest.id)}
+                                className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                                title="View Guest Card"
+                              >
+                                <QrCode size={16} />
+                              </button>
+                            )}
                             {guest.status === 'Pending' && isAdmin && (
                               <button 
                                 disabled={isSubmitting}
@@ -1279,9 +1328,9 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                                     setIsSubmitting(false);
                                   }
                                 }}
-                                className={`text-emerald-600 font-bold text-xs hover:underline ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-emerald-700 transition-all ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                               >
-                                {isSubmitting ? 'Approving...' : 'Approve'}
+                                {isSubmitting ? '...' : 'Approve'}
                               </button>
                             )}
                             {guest.status === 'Pending' && !isAdmin && (
@@ -1291,9 +1340,10 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                               <button 
                                 disabled={isSubmitting}
                                 onClick={() => setGuestToDelete(guest)}
-                                className={`text-rose-600 font-bold text-xs hover:underline ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors"
+                                title="Remove Guest"
                               >
-                                Remove
+                                <Trash2 size={16} />
                               </button>
                             )}
                           </div>
@@ -1613,8 +1663,14 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                       autoFocus
                       onKeyDown={async (e) => {
                         if (e.key === 'Enter') {
-                          const val = (e.target as HTMLInputElement).value;
+                          let val = (e.target as HTMLInputElement).value;
                           if (val) {
+                            // Extract ID if it's in the multi-line format
+                            if (val.startsWith('ID: ')) {
+                              const lines = val.split('\n');
+                              val = lines[0].replace('ID: ', '').trim();
+                            }
+                            
                             // Find member by ID or QR code
                             const member = db.members.find(m => m.id === val || m.qrCode === val);
                             if (member) {
@@ -1689,7 +1745,43 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
         </div>
       )}
 
-      {/* Success Approval Popup */}
+      {/* Guest Card Modal */}
+      {selectedGuestId && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full relative">
+            <button 
+              onClick={() => setSelectedGuestId(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+            >
+              <XCircle size={24} />
+            </button>
+            <h2 className="text-2xl font-bold mb-6">Guest Membership Card</h2>
+            <div className="mb-8">
+              <MembershipCard 
+                member={db.guests.find(g => g.id === selectedGuestId) as any} 
+                isGuest={true} 
+              />
+            </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => printCard(`member-card-${selectedGuestId}`)}
+                className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all"
+              >
+                Print Card
+              </button>
+              <button 
+                onClick={() => {
+                  const guest = db.guests.find(g => g.id === selectedGuestId);
+                  if (guest) downloadCardAsPDF(`member-card-${selectedGuestId}`, guest.name);
+                }}
+                className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all"
+              >
+                Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <AnimatePresence>
         {memberToDeleteId && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
@@ -1898,19 +1990,73 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                 <input name="name" required className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Enter guest name" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Timing Slot</label>
-                <input name="timing" required className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. 6:00 AM - 7:00 AM" />
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Contact Number</label>
+                <input name="contact" required className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="10-digit mobile number" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Membership</label>
+                  <select 
+                    name="membershipType" 
+                    className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
+                    onChange={(e) => {
+                      if (!isManualAmount) {
+                        const val = e.target.value;
+                        const amountInput = (e.target.form as HTMLFormElement).elements.namedItem('amount') as HTMLInputElement;
+                        if (val === '1Day') amountInput.value = '200';
+                        else if (val === '15Day') amountInput.value = '1000';
+                        else if (val === '1Month') amountInput.value = '1800';
+                        else if (val === '2Month') amountInput.value = '3200';
+                        else if (val === '3Month') amountInput.value = '4500';
+                        else if (val === '6Month') amountInput.value = '8000';
+                      }
+                    }}
+                  >
+                    <option value="1Day">1 Day</option>
+                    <option value="15Day">15 Days</option>
+                    <option value="1Month">1 Month</option>
+                    <option value="2Month">2 Months</option>
+                    <option value="3Month">3 Months</option>
+                    <option value="6Month">6 Months</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-semibold text-slate-700">Amount (₹)</label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-500 uppercase font-bold">Manual</span>
+                      <button 
+                        type="button"
+                        onClick={() => setIsManualAmount(!isManualAmount)}
+                        className={`w-8 h-4 rounded-full transition-colors relative ${isManualAmount ? 'bg-blue-600' : 'bg-slate-200'}`}
+                      >
+                        <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${isManualAmount ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
+                  </div>
+                  <input 
+                    type="number" 
+                    name="amount" 
+                    required 
+                    readOnly={!isManualAmount}
+                    className={`w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none ${!isManualAmount ? 'bg-slate-50 text-slate-500' : ''}`} 
+                    placeholder="Amount" 
+                    defaultValue="200"
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">Amount (₹)</label>
-                <input type="number" name="amount" required className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Enter amount" />
+                <label className="block text-sm font-semibold text-slate-700 mb-1">Timing Slot</label>
+                <select name="timing" className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                  {slots.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
               <button 
                 type="submit" 
                 disabled={isSubmitting}
                 className={`w-full bg-blue-600 text-white py-3 rounded-xl font-bold transition-all ${isSubmitting ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700'}`}
               >
-                {isSubmitting ? 'Adding Guest...' : 'Add Guest Request'}
+                {isSubmitting ? 'Adding Guest...' : 'Add Guest Membership'}
               </button>
             </form>
           </div>

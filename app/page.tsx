@@ -74,16 +74,21 @@ export default function Home() {
     }
   };
 
-  const fetchData = React.useCallback(async () => {
+  const fetchData = React.useCallback(async (retryCount = 0) => {
     try {
       const res = await fetch('/api/data');
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
       
       const contentType = res.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
+      if (!res.ok || !contentType || !contentType.includes('application/json')) {
         const text = await res.text();
+        
+        // If we get the "Starting Server" page, retry after a short delay
+        if (text.includes('Starting Server...') && retryCount < 5) {
+          console.log(`Server starting, retrying in 2s... (Attempt ${retryCount + 1}/5)`);
+          setTimeout(() => fetchData(retryCount + 1), 2000);
+          return;
+        }
+        
         console.error('Non-JSON response received:', text.substring(0, 200));
         throw new Error('Invalid response from server (not JSON)');
       }

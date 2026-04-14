@@ -5,7 +5,7 @@
  */
 
 // Replace this with your actual Google Apps Script Web App URL
-export const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyxkIbmlmg16ismfD1G0tcmPpVK8XN1TfPsEhOIKTr6rpj1F9zuw4GXNcpqsSKljjsSuA/exec";
+export const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOD6a57z6hASSV6J4YPh0aeRMWSxFXhqyj80yXF7Cq92r3TV7TsiIMbjqP9GKorV1alg/exec";
 
 /**
  * Validates the Google Script URL
@@ -137,15 +137,16 @@ export async function fetchFromSheets() {
             ...payment,
             id,
             memberId: payment.memberId || payment.memberID || payment.MemberID || '',
-            amount: payment.amount || payment.Amount || 0,
-            method: payment.method || payment.Method || payment['Payment Method'] || payment['payment_method'] || (payment['Method/Received by'] ? payment['Method/Received by'].split('/')[0].trim() : (payment['Method / Received By'] ? payment['Method / Received By'].split('/')[0].trim() : 'Cash')),
+            memberName: payment.memberName || payment.MemberName || payment['Member Name'] || '',
+            amount: Number(payment.amount || payment.Amount || 0),
+            method: String(payment.method || payment.Method || payment['Payment Method'] || payment['payment_method'] || (payment['Method/Received by'] ? String(payment['Method/Received by']).split('/')[0].trim() : (payment['Method / Received By'] ? String(payment['Method / Received By']).split('/')[0].trim() : 'Cash'))),
             date: payment.date || payment.Date || payment.paymentDate || payment.PaymentDate || payment.timestamp || payment.Timestamp || payment.payment_date || payment['Payment Date'] || payment.DateTime || payment.datetime || payment['Date & Time'] || payment['Date and Time'] || payment['date_time'] || payment['Date/Time'] || payment['Date / Time'] || payment.Time || payment.time || payment.Day || payment.day || payment.createdAt || payment.CreatedAt || payment.created_at || payment['Created At'] || payment.payment_time || payment['Payment Time'] || payment.txnDate || payment.txn_date || '',
             // If type looks like a status, use 'Membership' as default type and move value to status
             type: isStatusInType ? 'Membership' : (payment.type || payment.Type || 'Membership'),
             status: isStatusInType ? (payment.type || payment.Type) : (payment.status || payment.Status || 'Pending'),
             transactionId: payment.transactionId || payment.TransactionID || payment.transactionID || '',
-            cashStaffName: payment.cashStaffName || payment.CashStaffName || payment.receivedBy || payment.ReceivedBy || payment.received_by || payment['Received By'] || payment.staff_name || payment['Staff Name'] || payment.Received_By || payment.receivedByStaff || payment.StaffName || payment.received_by_staff || payment.ReceivedByStaff || payment.staffName || payment.Staff || payment.staff || payment['Collected By'] || payment['By'] || payment.Receiver || payment.receiver || payment.HandledBy || payment.handled_by || payment['Staff_Name'] || payment['Staff_name'] || (payment['Method/Received by'] && payment['Method/Received by'].includes('/') ? payment['Method/Received by'].split('/')[1].trim() : (payment['Method / Received By'] && payment['Method / Received By'].includes('/') ? payment['Method / Received By'].split('/')[1].trim() : (payment['Method/Received by'] || payment['Method / Received By'] || ''))),
-            receivedAmount: payment.receivedAmount || payment.ReceivedAmount || payment.amountReceived || payment.AmountReceived || payment.amount_received || payment['Amount Received'] || 0,
+            cashStaffName: payment.cashStaffName || payment.CashStaffName || payment.receivedBy || payment.ReceivedBy || payment.received_by || payment['Received By'] || payment.staff_name || payment['Staff Name'] || payment.Received_By || payment.receivedByStaff || payment.StaffName || payment.received_by_staff || payment.ReceivedByStaff || payment.staffName || payment.Staff || payment.staff || payment['Collected By'] || payment['By'] || payment.Receiver || payment.receiver || payment.HandledBy || payment.handled_by || payment['Staff_Name'] || payment['Staff_name'] || (payment['Method/Received by'] && String(payment['Method/Received by']).includes('/') ? String(payment['Method/Received by']).split('/')[1].trim() : (payment['Method / Received By'] && String(payment['Method / Received By']).includes('/') ? String(payment['Method / Received By']).split('/')[1].trim() : (payment['Method/Received by'] || payment['Method / Received By'] || ''))),
+            receivedAmount: Number(payment.receivedAmount || payment.ReceivedAmount || payment.amountReceived || payment.AmountReceived || payment.amount_received || payment['Amount Received'] || 0),
           };
         });
       }

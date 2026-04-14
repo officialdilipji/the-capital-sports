@@ -20,21 +20,10 @@ export async function GET() {
       adminConfig: sheetData.adminConfig || localDb.adminConfig,
     } : localDb;
     
-    const body = JSON.stringify(data);
-    
-    return new Response(body, {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body).toString(),
-      },
-    });
+    return NextResponse.json(data);
   } catch (error) {
     console.error('GET /api/data error:', error);
-    return new Response(JSON.stringify(getDb()), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return NextResponse.json(getDb());
   }
 }
 
@@ -62,6 +51,7 @@ export async function POST(request: Request) {
       if (paymentData) {
         const newPayment: Payment = {
           ...paymentData,
+          memberName: newMember.name,
           id: `p${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           memberId: memberId,
           date: new Date().toISOString(),
@@ -113,6 +103,7 @@ export async function POST(request: Request) {
         const newPayment: Payment = {
           id: `p${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           memberId: member.id,
+          memberName: member.name,
           amount: body.amount,
           method: body.method,
           date: new Date().toISOString(),
@@ -181,12 +172,39 @@ export async function POST(request: Request) {
 
     else if (body.type === 'addGuest') {
       const guestId = `g${Date.now()}`;
-      const guest = { ...body.data, id: guestId, status: 'Pending' };
+      const guestData = body.data;
+      
+      // Calculate expiry if membership type is provided
+      let expiryDate = '';
+      if (guestData.membershipType) {
+        expiryDate = calculateExpiry(guestData.membershipType, guestData.date || new Date().toISOString().split('T')[0]);
+      }
+
+      const guest = { 
+        ...guestData, 
+        id: guestId, 
+        status: 'Pending',
+        expiryDate,
+        qrCode: `GUEST-${guestId}-${Date.now()}`
+      };
       db.guests.push(guest);
       
+      // Create a payment record for the guest
+      const paymentId = `p${Date.now()}`;
+      const payment: Payment = {
+        id: paymentId,
+        memberId: guestId,
+        memberName: guest.name,
+        amount: Number(guest.amount),
+        method: 'Cash', // Guests usually pay cash at reception
+        date: new Date().toISOString(),
+        type: 'Guest',
+        status: 'Pending'
+      };
+      db.payments.push(payment);
+      
       // Enrich body data for Google Sheets
-      body.data.id = guestId;
-      body.data.status = 'Pending';
+      body.data = guest;
       
       responseData = guest;
     }
@@ -250,21 +268,16 @@ export async function POST(request: Request) {
     // Send enriched body to Google Sheets
     await sendToSheets(body);
 
-    return new Response(JSON.stringify(responseData), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('POST /api/data error:', error);
-    return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
 function calculateExpiry(type: string, joiningDateStr?: string) {
   const baseDate = joiningDateStr ? new Date(joiningDateStr) : new Date();
+  if (type === '1Day') return addDays(baseDate, 1).toISOString().split('T')[0];
   if (type === '15Day') return addDays(baseDate, 15).toISOString().split('T')[0];
   if (type === '1Month') return addDays(baseDate, 30).toISOString().split('T')[0];
   if (type === '2Month') return addDays(baseDate, 60).toISOString().split('T')[0];

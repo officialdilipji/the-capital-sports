@@ -164,7 +164,15 @@ export default function StaffDashboard({ db, onUpdate, currentUser }: { db: Data
               <div className="flex justify-between text-sm">
                 <span>Cash Collected</span>
                 <span className="font-bold">
-                  ₹{db.payments?.filter(p => p.date.startsWith(new Date().toISOString().split('T')[0])).reduce((acc, p) => acc + p.amount, 0) || 0}
+                  ₹{(db.payments || []).filter(p => {
+                    const isToday = p.date.startsWith(new Date().toISOString().split('T')[0]);
+                    const memberExists = db.members.some(m => m.id === p.memberId);
+                    const guestExists = db.guests.some(g => g.id === p.memberId);
+                    return isToday && (memberExists || guestExists);
+                  }).reduce((acc, p) => {
+                    const amt = Number(p.amount);
+                    return acc + (isNaN(amt) || amt < 0 ? 0 : amt);
+                  }, 0)}
                 </span>
               </div>
             </div>

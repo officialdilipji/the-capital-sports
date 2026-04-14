@@ -1,4 +1,4 @@
-export type MembershipType = '15Day' | '1Month' | '2Month' | '3Month' | '6Month';
+export type MembershipType = '1Day' | '15Day' | '1Month' | '2Month' | '3Month' | '6Month';
 export type UserRole = 'Admin' | 'Receptionist' | 'Instructor' | 'Member';
 export type Gender = 'Male' | 'Female' | 'Other';
 export type MembershipStatus = 'Pending' | 'Active' | 'Expired';
@@ -42,6 +42,7 @@ export interface Booking {
 export interface Payment {
   id: string;
   memberId: string;
+  memberName?: string;
   amount: number;
   method: 'UPI' | 'Cash';
   date: string;
@@ -69,10 +70,14 @@ export interface AdminConfig {
 export interface Guest {
   id: string;
   name: string;
+  contact?: string;
   timing: string;
+  membershipType?: MembershipType;
   amount: number;
   status: 'Pending' | 'Approved';
   date: string;
+  expiryDate?: string;
+  qrCode?: string;
 }
 
 export interface Attendance {
