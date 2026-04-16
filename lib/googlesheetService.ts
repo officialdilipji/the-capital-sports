@@ -150,6 +150,40 @@ export async function fetchFromSheets() {
           };
         });
       }
+
+      // Map Google Sheet keys for attendance
+      if (data && data.attendance && Array.isArray(data.attendance)) {
+        data.attendance = data.attendance.map((a: any) => {
+          return {
+            ...a,
+            id: a.id || a.ID || a.attendanceId || a.AttendanceID || `a-${Math.random().toString(36).substr(2, 9)}`,
+            memberId: a.memberId || a.memberID || a.MemberID || '',
+            memberName: a.memberName || a.MemberName || a['Member Name'] || '',
+            date: a.date || a.Date || '',
+            checkIn: a.checkIn || a.CheckIn || a['Check In'] || a.in || a.In || '',
+            checkOut: a.checkOut || a.CheckOut || a['Check Out'] || a.out || a.Out || '',
+            slot: a.slot || a.Slot || '',
+            status: a.status || a.Status || 'In'
+          };
+        });
+      }
+
+      // Map Google Sheet keys for guests
+      if (data && data.guests && Array.isArray(data.guests)) {
+        data.guests = data.guests.map((g: any) => {
+          return {
+            ...g,
+            id: g.id || g.ID || g.guestId || g.GuestId || `g-${Math.random().toString(36).substr(2, 9)}`,
+            name: g.name || g.Name || '',
+            contact: g.contact || g.Contact || '',
+            membershipType: g.membershipType || g.type || g.Type || '1Day',
+            expiryDate: g.expiryDate || g.expiry || '',
+            date: g.date || g.Date || '',
+            timing: g.timing || g.Timing || '',
+            status: g.status || g.Status || 'Active'
+          };
+        });
+      }
       
       return data;
     } else {

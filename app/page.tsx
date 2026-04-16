@@ -22,6 +22,8 @@ import AttendanceDashboard from '@/components/AttendanceDashboard';
 import StaffDashboard from '@/components/StaffDashboard';
 import { Database, UserRole } from '@/lib/types';
 
+import { fetchJson } from '@/lib/api';
+
 export default function Home() {
   const [role, setRole] = useState<UserRole | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -74,35 +76,22 @@ export default function Home() {
     }
   };
 
-  const fetchData = React.useCallback(async (retryCount = 0) => {
+  const fetchData = React.useCallback(async () => {
     try {
-      const res = await fetch('/api/data');
+      const data = await fetchJson<Database>('/api/data');
       
-      const contentType = res.headers.get('content-type');
-      if (!res.ok || !contentType || !contentType.includes('application/json')) {
-        const text = await res.text();
-        
-        // If we get the "Starting Server" page, retry after a short delay
-        if (text.includes('Starting Server...') && retryCount < 5) {
-          console.log(`Server starting, retrying in 2s... (Attempt ${retryCount + 1}/5)`);
-          setTimeout(() => fetchData(retryCount + 1), 2000);
-          return;
-        }
-        
-        console.error('Non-JSON response received:', text.substring(0, 200));
-        throw new Error('Invalid response from server (not JSON)');
-      }
-      
-      const data = await res.json();
       if (!data || typeof data !== 'object') {
         throw new Error('Invalid data format received from server');
       }
       
-      // Ensure we have at least an empty array for members and staff
+      // Ensure we have at least an empty array for all required collections
       const sanitizedData = {
         ...data,
         members: Array.isArray(data.members) ? data.members : [],
         staff: Array.isArray(data.staff) ? data.staff : [],
+        attendance: Array.isArray(data.attendance) ? data.attendance : [],
+        guests: Array.isArray(data.guests) ? data.guests : [],
+        payments: Array.isArray(data.payments) ? data.payments : [],
       };
       
       if (sanitizedData.staff.length === 0) {

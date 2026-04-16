@@ -37,7 +37,9 @@ import {
 } from 'lucide-react';
 import { Database, Member, MembershipType, Payment, AdminConfig } from '@/lib/types';
 import { slots } from '@/lib/constants';
+import { fetchJson, safeFetch } from '@/lib/api';
 import MembershipCard from './MembershipCard';
+import QRScanner from './QRScanner';
 import { getDirectImageUrl } from '@/lib/utils';
 import { downloadCardAsPDF, printCard } from '@/lib/cardUtils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -146,6 +148,8 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
   const [activeTab, setActiveTab] = useState<'dashboard' | 'members' | 'config' | 'payments' | 'guests' | 'staff' | 'attendance' | 'maintenance'>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [attendanceSearch, setAttendanceSearch] = useState('');
+  const [manualId, setManualId] = useState('');
+  const [scanError, setScanError] = useState<string | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
   const [renewingMemberId, setRenewingMemberId] = useState<string | null>(null);
@@ -362,7 +366,7 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
     if (!member) return;
 
     try {
-      const res = await fetch('/api/data', {
+      const res = await safeFetch('/api/data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -393,21 +397,29 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
   const handleCheckIn = async (member: Member) => {
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/data', {
+      console.log('Attempting check-in for:', member.id, member.name);
+      const res = await safeFetch('/api/data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'checkIn',
           memberId: member.id,
           memberName: member.name,
-          slot: member.timingSlot
+          slot: member.timingSlot || (member as any).timing || 'General'
         })
       });
       if (res.ok) {
+        console.log('Check-in successful');
         onUpdate();
+        return true;
+      } else {
+        const err = await res.text();
+        console.error('Check-in failed server-side:', err);
+        return false;
       }
     } catch (error) {
       console.error('Check-in failed:', error);
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -416,7 +428,8 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
   const handleCheckOut = async (attendanceId: string) => {
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/data', {
+      console.log('Attempting check-out for attendance ID:', attendanceId);
+      const res = await safeFetch('/api/data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -425,12 +438,51 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
         })
       });
       if (res.ok) {
+        console.log('Check-out successful');
         onUpdate();
+        return true;
+      } else {
+        const err = await res.text();
+        console.error('Check-out failed server-side:', err);
+        return false;
       }
     } catch (error) {
       console.error('Check-out failed:', error);
+      return false;
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleManualAttendance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualId.trim()) return;
+
+    const val = manualId.trim();
+    const member = db.members.find(m => m.id === val || m.contact === val);
+    const guest = !member ? db.guests.find(g => g.id === val || g.contact === val) : null;
+    const person = member || guest;
+
+    if (person) {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      const existing = db.attendance?.find(a => a.memberId === person.id && a.date === today && a.status === 'In');
+      
+      let success = false;
+      if (existing) {
+        success = await handleCheckOut(existing.id);
+      } else {
+        const slot = (person as any).timingSlot || (person as any).timing || 'General';
+        success = await handleCheckIn({ ...person, timingSlot: slot } as Member);
+      }
+      
+      if (success) {
+        setManualId('');
+        alert(`${person.name} ${existing ? 'Checked Out' : 'Checked In'} successfully!`);
+      } else {
+        alert('Operation failed. Please check connection.');
+      }
+    } else {
+      alert('Member/Guest not found with this ID or Contact Number.');
     }
   };
 
@@ -1368,14 +1420,32 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                   <h3 className="text-lg font-bold text-slate-900">Daily Attendance</h3>
                   <p className="text-sm text-slate-500">Track member check-ins and check-outs.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button 
-                    onClick={() => setShowScanner(true)}
-                    className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2"
+                    onClick={() => {
+                      setScanError(null);
+                      setShowScanner(true);
+                    }}
+                    className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-700 transition-all"
                   >
                     <QrCode size={16} /> Scan QR
                   </button>
-                  <div className="relative flex-1 max-w-md">
+                  <form onSubmit={handleManualAttendance} className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Enter ID or Contact..." 
+                      className="px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm w-40"
+                      value={manualId}
+                      onChange={(e) => setManualId(e.target.value)}
+                    />
+                    <button 
+                      type="submit"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-blue-700 transition-all"
+                    >
+                      Go
+                    </button>
+                  </form>
+                  <div className="relative flex-1 min-w-[200px]">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
                       type="text" 
@@ -1622,7 +1692,7 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
         />
       )}
 
-      {/* QR Scanner Simulation Modal */}
+      {/* QR Scanner Modal */}
       <AnimatePresence>
         {showScanner && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -1645,65 +1715,90 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                   <X size={20} />
                 </button>
               </div>
-              <div className="p-8 space-y-6">
-                <div className="aspect-square bg-slate-100 rounded-3xl border-4 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 gap-4 relative overflow-hidden">
-                  <QrCode size={64} className="animate-pulse" />
-                  <p className="text-sm font-medium">Ready to scan member QR code</p>
-                  <div className="absolute inset-x-0 top-1/2 h-0.5 bg-emerald-500/30 animate-scan"></div>
+              <div className="p-6 space-y-6">
+                {scanError && (
+                  <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-sm font-medium flex items-center gap-2">
+                    <AlertTriangle size={16} />
+                    {scanError}
+                  </div>
+                )}
+                <div className="rounded-2xl overflow-hidden border-2 border-emerald-100">
+                  <QRScanner 
+                    onScanSuccess={async (decodedText) => {
+                      if (decodedText) {
+                        let val = decodedText;
+                        console.log('Scanned text:', val);
+                        // Extract ID if it's in the multi-line format
+                        if (val.includes('ID: ')) {
+                          const lines = val.split('\n');
+                          const idLine = lines.find(l => l.startsWith('ID: '));
+                          if (idLine) {
+                            val = idLine.replace('ID: ', '').trim();
+                          }
+                        }
+                        
+                        // Find member or guest
+                        const member = db.members.find(m => m.id === val || m.qrCode === val || m.contact === val);
+                        const guest = !member ? db.guests.find(g => g.id === val || g.qrCode === val || g.contact === val) : null;
+                        const person = member || guest;
+
+                        if (person) {
+                          setScanError(null);
+                          const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+                          const existing = db.attendance?.find(a => a.memberId === person.id && a.date === today && a.status === 'In');
+                          
+                          let success = false;
+                          if (existing) {
+                            success = await handleCheckOut(existing.id);
+                          } else {
+                            const slot = (person as any).timingSlot || (person as any).timing || 'General';
+                            success = await handleCheckIn({ ...person, timingSlot: slot } as Member);
+                          }
+                          
+                          if (success) {
+                            setShowScanner(false);
+                            alert(`${person.name} ${existing ? 'Checked Out' : 'Checked In'} successfully!`);
+                          } else {
+                            setScanError('Failed to record attendance. Check connection.');
+                          }
+                        } else {
+                          console.warn('Person not found for ID:', val);
+                          setScanError(`Member/Guest not found for ID: ${val}`);
+                        }
+                      }
+                    }}
+                    onScanFailure={(err) => {
+                      // Only log significant errors, ignore frequent "no QR code found" noise
+                      if (!err.includes('No QR code found')) {
+                        console.warn('Scan failure:', err);
+                      }
+                    }}
+                  />
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-slate-700">Manual ID Entry</label>
+                  <label className="block text-sm font-semibold text-slate-700">Manual ID or Contact Entry</label>
                   <div className="flex gap-2">
                     <input 
-                      id="qr-input"
                       type="text" 
-                      placeholder="Enter Member ID or Scan..." 
+                      placeholder="Enter ID or Contact Number..." 
                       className="flex-1 p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none"
-                      autoFocus
-                      onKeyDown={async (e) => {
+                      value={manualId}
+                      onChange={(e) => setManualId(e.target.value)}
+                      onKeyDown={(e) => {
                         if (e.key === 'Enter') {
-                          let val = (e.target as HTMLInputElement).value;
-                          if (val) {
-                            // Extract ID if it's in the multi-line format
-                            if (val.startsWith('ID: ')) {
-                              const lines = val.split('\n');
-                              val = lines[0].replace('ID: ', '').trim();
-                            }
-                            
-                            // Find member by ID or QR code
-                            const member = db.members.find(m => m.id === val || m.qrCode === val);
-                            if (member) {
-                              // Check if already checked in today
-                              const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-                              const existing = db.attendance?.find(a => a.memberId === member.id && a.date === today && a.status === 'In');
-                              
-                              if (existing) {
-                                // Check out
-                                handleCheckOut(existing.id);
-                              } else {
-                                // Check in
-                                handleCheckIn(member);
-                              }
-                              setShowScanner(false);
-                            } else {
-                              alert('Member not found!');
-                            }
-                          }
+                          handleManualAttendance(e);
                         }
                       }}
                     />
                     <button 
-                      onClick={() => {
-                        const input = document.getElementById('qr-input') as HTMLInputElement;
-                        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-                      }}
-                      className="bg-emerald-600 text-white px-4 rounded-xl font-bold"
+                      onClick={handleManualAttendance}
+                      className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-emerald-700 transition-all"
                     >
                       Go
                     </button>
                   </div>
-                  <p className="text-[10px] text-slate-400 font-medium">Tip: Scanners usually act as a keyboard. Focus this field and scan.</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Tip: You can enter the Member ID or their registered Contact Number.</p>
                 </div>
               </div>
             </motion.div>
@@ -1991,7 +2086,19 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1">Contact Number</label>
-                <input name="contact" required className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="10-digit mobile number" />
+                <input 
+                  name="contact" 
+                  required 
+                  type="tel"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" 
+                  placeholder="10-digit mobile number" 
+                  onInput={(e) => {
+                    const target = e.target as HTMLInputElement;
+                    target.value = target.value.replace(/[^0-9]/g, '');
+                  }}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

@@ -17,6 +17,8 @@ export async function GET() {
       members: (Array.isArray(sheetData.members) && sheetData.members.length > 0) ? sheetData.members : localDb.members,
       staff: (Array.isArray(sheetData.staff) && sheetData.staff.length > 0) ? sheetData.staff : localDb.staff,
       payments: (Array.isArray(sheetData.payments) && sheetData.payments.length > 0) ? sheetData.payments : localDb.payments,
+      attendance: (Array.isArray(sheetData.attendance) && sheetData.attendance.length > 0) ? sheetData.attendance : localDb.attendance,
+      guests: (Array.isArray(sheetData.guests) && sheetData.guests.length > 0) ? sheetData.guests : localDb.guests,
       adminConfig: sheetData.adminConfig || localDb.adminConfig,
     } : localDb;
     

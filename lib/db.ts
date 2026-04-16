@@ -16,6 +16,7 @@ const initialData: Database = {
   adminConfig: {
     upiId: 'capitalsports@upi',
     amounts: {
+      '1Day': 200,
       '15Day': 2000,
       '1Month': 3500,
       '2Month': 6000,

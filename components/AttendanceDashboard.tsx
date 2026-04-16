@@ -110,11 +110,12 @@ export default function AttendanceDashboard({ db, member, onUpdate }: { db: Data
 
   useEffect(() => {
     if (!member) return;
-    const todayRecords = db.attendance?.filter(a => a.memberId === member.id && isToday(a.date)) || [];
+    const allAttendanceRaw = db.attendance || [];
+    const todayRecords = allAttendanceRaw.filter(a => a.memberId === member.id && isToday(a.date));
     
     // Use the same logic as in the component body for consistency
     const activeAttendance = todayRecords.find(a => a.status === 'In') || 
-      db.attendance?.filter(a => a.memberId === member.id && a.status === 'In')
+      allAttendanceRaw.filter(a => a.memberId === member.id && a.status === 'In')
         .sort((a, b) => {
           try {
             return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -135,12 +136,13 @@ export default function AttendanceDashboard({ db, member, onUpdate }: { db: Data
   if (!member) return null;
 
   // Find any attendance for today
-  const todayRecords = db.attendance?.filter(a => a.memberId === member.id && isToday(a.date)) || [];
+  const allAttendanceRaw = db.attendance || [];
+  const todayRecords = allAttendanceRaw.filter(a => a.memberId === member.id && isToday(a.date));
   
   // Find active attendance (status 'In')
   // First try today's records, then fallback to any 'In' record as a safety measure
   const activeAttendance = todayRecords.find(a => a.status === 'In') || 
-    db.attendance?.filter(a => a.memberId === member.id && a.status === 'In')
+    allAttendanceRaw.filter(a => a.memberId === member.id && a.status === 'In')
       .sort((a, b) => {
         try {
           return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -162,13 +164,13 @@ export default function AttendanceDashboard({ db, member, onUpdate }: { db: Data
 
   const status = getStatus();
   
-  const allAttendance = db.attendance?.filter(a => a.memberId === member.id).sort((a, b) => {
+  const allAttendance = allAttendanceRaw.filter(a => a.memberId === member.id).sort((a, b) => {
     try {
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     } catch {
       return b.date.localeCompare(a.date);
     }
-  }) || [];
+  });
 
   const handleCheckIn = async () => {
     if (status !== 'none') return;

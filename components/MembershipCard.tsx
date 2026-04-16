@@ -74,7 +74,7 @@ export default function MembershipCard({ member, isGuest = false }: { member: Me
         overflow: 'hidden',
         background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
         borderRadius: '1rem',
-        padding: '1.5rem',
+        padding: '1.25rem',
         color: '#ffffff',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
         fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -92,14 +92,14 @@ export default function MembershipCard({ member, isGuest = false }: { member: Me
       
       <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', padding: '0.5rem', borderRadius: '0.75rem', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
-              <Droplets size={24} style={{ color: '#ffffff' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)', padding: '0.4rem', borderRadius: '0.6rem', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>
+              <Droplets size={20} style={{ color: '#ffffff' }} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 900, letterSpacing: '0.02em', textTransform: 'uppercase', margin: 0, lineHeight: 1.1, color: '#f8fafc' }}>The Capital Sports</h2>
-              <p style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.2em', fontWeight: 700, color: '#94a3b8', margin: 0, marginTop: '3px' }}>Premium Fitness Club</p>
+              <h2 style={{ fontSize: '1rem', fontWeight: 900, letterSpacing: '0.02em', textTransform: 'uppercase', margin: 0, lineHeight: 1.1, color: '#f8fafc' }}>The Capital Sports</h2>
+              <p style={{ fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.2em', fontWeight: 700, color: '#94a3b8', margin: 0, marginTop: '2px' }}>Premium Fitness Club</p>
             </div>
           </div>
           <div 
@@ -121,14 +121,14 @@ export default function MembershipCard({ member, isGuest = false }: { member: Me
         </div>
 
         {/* Main Content Area */}
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '100px 1fr 100px', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '90px 1fr 90px', gap: '0.75rem', alignItems: 'center' }}>
           {/* Left: Photo */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
               <div 
                 style={{ 
-                  width: '5.5rem', 
-                  height: '5.5rem', 
-                  borderRadius: '1.25rem', 
+                  width: '5rem', 
+                  height: '5rem', 
+                  borderRadius: '1rem', 
                   overflow: 'hidden', 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -154,31 +154,31 @@ export default function MembershipCard({ member, isGuest = false }: { member: Me
           </div>
 
           {/* Center: Member Info */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
             <div>
-              <p style={{ fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#64748b', marginBottom: '4px', fontWeight: 700 }}>{isGuest ? 'Guest Name' : 'Member Name'}</p>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: '#ffffff', lineHeight: 1.2, letterSpacing: '-0.01em' }}>{member.name}</h3>
+              <p style={{ fontSize: '7px', textTransform: 'uppercase', letterSpacing: '0.15em', color: '#64748b', marginBottom: '2px', fontWeight: 700 }}>{isGuest ? 'Guest Name' : 'Member Name'}</p>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: '#ffffff', lineHeight: 1.2, letterSpacing: '-0.01em' }}>{member.name}</h3>
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ width: '1.5rem', height: '1.5rem', borderRadius: '0.4rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Clock size={12} style={{ color: '#3b82f6' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <div style={{ width: '1.25rem', height: '1.25rem', borderRadius: '0.3rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock size={10} style={{ color: '#3b82f6' }} />
                 </div>
                 <div>
-                  <p style={{ fontSize: '7px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', margin: 0 }}>Timing Slot</p>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 700, margin: 0, color: '#e2e8f0' }}>{timingSlot || 'N/A'}</p>
+                  <p style={{ fontSize: '6px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', margin: 0 }}>Timing Slot</p>
+                  <p style={{ fontSize: '0.7rem', fontWeight: 700, margin: 0, color: '#e2e8f0' }}>{timingSlot || 'N/A'}</p>
                 </div>
               </div>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ width: '1.5rem', height: '1.5rem', borderRadius: '0.4rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Calendar size={12} style={{ color: '#3b82f6' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <div style={{ width: '1.25rem', height: '1.25rem', borderRadius: '0.3rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Calendar size={10} style={{ color: '#3b82f6' }} />
                 </div>
                 <div>
-                  <p style={{ fontSize: '7px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', margin: 0 }}>Expiry Date</p>
+                  <p style={{ fontSize: '6px', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', margin: 0 }}>Expiry Date</p>
                   <p style={{ 
-                    fontSize: '0.75rem', 
+                    fontSize: '0.7rem', 
                     fontWeight: 700, 
                     margin: 0,
                     color: expiryStatus.isExpired ? '#ef4444' : 
@@ -226,7 +226,7 @@ export default function MembershipCard({ member, isGuest = false }: { member: Me
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '8px', color: '#ffffff', fontWeight: 700, margin: 0, letterSpacing: '0.05em' }}>THE CAPITAL SPORTS</p>
-            <p style={{ fontSize: '7px', color: '#64748b', margin: 0 }}>Valid at all branches</p>
+            <p style={{ fontSize: '6px', color: '#64748b', margin: 0 }}>Premium Swimming Pool</p>
           </div>
         </div>
       </div>

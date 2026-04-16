@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { UserPlus, Shield, CheckCircle2, CreditCard, Banknote, QrCode, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Database, MembershipType, Payment } from '@/lib/types';
 import { slots } from '@/lib/constants';
+import { fetchJson, safeFetch } from '@/lib/api';
 import { QRCodeCanvas } from 'qrcode.react';
 
 const schema = z.object({
@@ -19,7 +20,7 @@ const schema = z.object({
   address: z.string().min(5, 'Address is required'),
   emergencyContact: z.string().min(10, 'Emergency contact (Name & Number) is required'),
   medicalCondition: z.string().optional(),
-  membershipType: z.enum(['15Day', '1Month', '2Month', '3Month', '6Month']),
+  membershipType: z.enum(['1Day', '15Day', '1Month', '2Month', '3Month', '6Month']),
   timingSlot: z.string().min(1, 'Timing slot is required'),
   joiningDate: z.string().min(1, 'Joining date is required'),
   photoUrl: z.string().optional(),
@@ -105,7 +106,7 @@ export default function RegistrationForm({ db, onUpdate, role, currentUser }: { 
           const item = localStorage.getItem(key);
           if (!item) continue;
           const data = JSON.parse(item);
-          const res = await fetch('/api/data', {
+          const res = await safeFetch('/api/data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'register', data })
@@ -224,7 +225,7 @@ export default function RegistrationForm({ db, onUpdate, role, currentUser }: { 
     }
 
     // Background sync to Google Sheets/Database
-    fetch('/api/data', {
+    safeFetch('/api/data', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: 'register', data: enrichedData })
