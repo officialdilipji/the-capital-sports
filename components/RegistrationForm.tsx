@@ -71,7 +71,7 @@ export default function RegistrationForm({ db, onUpdate, role, currentUser }: { 
   const [isCompressing, setIsCompressing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Cash'>('UPI');
 
-  const { register, handleSubmit, formState: { errors }, watch, setValue, reset, trigger, setError } = useForm({
+  const { register, handleSubmit, formState: { errors }, watch, setValue, reset, trigger, setError } = useForm<RegistrationData>({
     resolver: zodResolver(schema),
     defaultValues: {
       membershipType: '1Month' as MembershipType,
@@ -387,6 +387,7 @@ export default function RegistrationForm({ db, onUpdate, role, currentUser }: { 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1">Membership Type</label>
                   <select {...register('membershipType')} className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                    <option value="1Day">1 Day (₹{db.adminConfig.amounts['1Day'] || 200})</option>
                     <option value="15Day">15 Days (₹{db.adminConfig.amounts['15Day'] || 2000})</option>
                     <option value="1Month">1 Month (₹{db.adminConfig.amounts['1Month'] || 3500})</option>
                     <option value="2Month">2 Months (₹{db.adminConfig.amounts['2Month'] || 6000})</option>

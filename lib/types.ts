@@ -100,4 +100,11 @@ export interface Database {
   adminConfig: AdminConfig;
   guests: Guest[];
   attendance: Attendance[];
+  _sync?: {
+    isSheets: boolean;
+    error: string | null;
+    isHtmlError?: boolean;
+    status?: number | null;
+    url?: string;
+  };
 }

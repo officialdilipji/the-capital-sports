@@ -646,6 +646,7 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
     const newConfig = {
       upiId: formData.get('upiId') as string,
       amounts: {
+        '1Day': Number(formData.get('1Day')),
         '15Day': Number(formData.get('15Day')),
         '1Month': Number(formData.get('1Month')),
         '2Month': Number(formData.get('2Month')),
@@ -818,6 +819,39 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
         <div className="p-8">
           {activeTab === 'dashboard' && (
             <div className="space-y-8">
+              {/* Sync Status Banner */}
+              {db._sync && (
+                <div className={`p-4 rounded-2xl flex items-center justify-between gap-4 border ${db._sync.isSheets ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
+                  <div className="flex items-center gap-3">
+                    {db._sync.isSheets ? (
+                      <CheckCircle2 size={20} className="text-emerald-500" />
+                    ) : (
+                      <AlertTriangle size={20} className="text-amber-500" />
+                    )}
+                    <div>
+                      <p className="text-sm font-bold">
+                        {db._sync.isSheets ? 'Google Sheets Connected' : 'Running in Local Mode'}
+                      </p>
+                      <p className="text-xs opacity-80">
+                        {db._sync.isSheets 
+                          ? 'All data is synchronized with your spreadsheet.' 
+                          : db._sync.isHtmlError 
+                            ? 'Google Script returned an error page. Check your deployment settings.' 
+                            : 'Failed to connect to Google Sheets. Data will not persist on Vercel.'}
+                      </p>
+                    </div>
+                  </div>
+                  {!db._sync.isSheets && (
+                    <button 
+                      onClick={() => setActiveTab('config')}
+                      className="text-xs font-bold underline hover:no-underline"
+                    >
+                      Troubleshoot Sync
+                    </button>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Attendance Chart */}
                 <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
@@ -1160,13 +1194,13 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
               <div className="space-y-4">
                 <h3 className="text-lg font-bold text-slate-900">Membership Pricing</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  {(['15Day', '1Month', '2Month', '3Month', '6Month'] as MembershipType[]).map((type) => (
+                  {(['1Day', '15Day', '1Month', '2Month', '3Month', '6Month'] as MembershipType[]).map((type) => (
                     <div key={type}>
                       <label className="block text-sm font-semibold text-slate-700 mb-1">{type} Amount (₹)</label>
                       <input 
                         type="number" 
                         name={type} 
-                        defaultValue={db.adminConfig.amounts[type] || (type === '15Day' ? 2000 : type === '1Month' ? 3500 : type === '2Month' ? 6000 : type === '3Month' ? 8000 : 15000)} 
+                        defaultValue={db.adminConfig.amounts[type] || (type === '1Day' ? 200 : type === '15Day' ? 2000 : type === '1Month' ? 3500 : type === '2Month' ? 6000 : type === '3Month' ? 8000 : 15000)} 
                         className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" 
                       />
                     </div>
@@ -1181,6 +1215,40 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
               >
                 {isSubmitting ? 'Saving...' : 'Save Changes'}
               </button>
+
+              {/* Sync Troubleshooting Section */}
+              <div className="mt-12 pt-8 border-t border-slate-100">
+                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <Shield size={20} className="text-blue-600" />
+                  Google Sheets Sync Troubleshooting
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className={`p-4 rounded-2xl border ${db._sync?.isSheets ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-bold">Connection Status</span>
+                      <span className={`text-xs px-2 py-1 rounded-full font-bold uppercase ${db._sync?.isSheets ? 'bg-emerald-200 text-emerald-800' : 'bg-red-200 text-red-800'}`}>
+                        {db._sync?.isSheets ? 'Connected' : 'Disconnected'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600">
+                      <strong>URL Source:</strong> {db._sync?.url || 'Unknown'}<br/>
+                      {db._sync?.error && <><strong>Error:</strong> {db._sync.error}<br/></>}
+                      {db._sync?.isHtmlError && <span className="text-red-600 font-bold">CRITICAL: Received HTML instead of JSON. This means your Google Script is returning an error page.</span>}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <h4 className="text-sm font-bold mb-2">Common Fixes:</h4>
+                    <ul className="text-xs space-y-2 text-slate-600 list-disc pl-4">
+                      <li><strong>Authorization:</strong> Open your Google Script, click &quot;Run&quot; on the <code>testConnection</code> function, and follow the prompts to authorize.</li>
+                      <li><strong>Deployment:</strong> Click &quot;Deploy&quot; &gt; &quot;New Deployment&quot;. Ensure &quot;Execute as&quot; is <strong>Me</strong> and &quot;Who has access&quot; is <strong>Anyone</strong>.</li>
+                      <li><strong>Bound Script:</strong> Ensure you created the script via <em>Extensions &gt; Apps Script</em> inside the sheet, not as a standalone script.</li>
+                      <li><strong>Environment Variable:</strong> Ensure <code>GOOGLE_SCRIPT_URL</code> is set in your Vercel/AI Studio settings.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </form>
           )}
 
@@ -1587,6 +1655,7 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Membership Plan</label>
                     <select name="membershipType" defaultValue={db.members.find(m => m.id === renewingMemberId)?.membershipType} className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none">
+                      <option value="1Day">1 Day</option>
                       <option value="15Day">15 Days</option>
                       <option value="1Month">1 Month</option>
                       <option value="2Month">2 Months</option>

@@ -20,7 +20,21 @@ export async function GET() {
       attendance: (Array.isArray(sheetData.attendance) && sheetData.attendance.length > 0) ? sheetData.attendance : localDb.attendance,
       guests: (Array.isArray(sheetData.guests) && sheetData.guests.length > 0) ? sheetData.guests : localDb.guests,
       adminConfig: sheetData.adminConfig || localDb.adminConfig,
-    } : localDb;
+      _sync: {
+        isSheets: !!sheetData._isSheets,
+        error: sheetData.error || null,
+        isHtmlError: !!sheetData._isHtmlError,
+        status: sheetData._status || null,
+        url: process.env.GOOGLE_SCRIPT_URL ? 'Configured' : 'Fallback'
+      }
+    } : {
+      ...localDb,
+      _sync: {
+        isSheets: false,
+        error: 'Failed to fetch from sheets',
+        url: process.env.GOOGLE_SCRIPT_URL ? 'Configured' : 'Fallback'
+      }
+    };
     
     return NextResponse.json(data);
   } catch (error) {
@@ -268,7 +282,15 @@ export async function POST(request: Request) {
     saveDb(db);
 
     // Send enriched body to Google Sheets
-    await sendToSheets(body);
+    const sheetResult = await sendToSheets(body);
+    
+    if (!sheetResult) {
+      console.warn('Google Sheets sync failed, but local data was updated. Note: Local data is not persistent on Vercel.');
+      return NextResponse.json({ 
+        ...responseData, 
+        _warning: 'Data saved locally but Google Sheets sync failed. Check GOOGLE_SCRIPT_URL and Apps Script logs.' 
+      });
+    }
 
     return NextResponse.json(responseData);
   } catch (error) {

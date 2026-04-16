@@ -4,8 +4,12 @@
  * via a Google Apps Script Web App.
  */
 
-// Replace this with your actual Google Apps Script Web App URL
-export const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOD6a57z6hASSV6J4YPh0aeRMWSxFXhqyj80yXF7Cq92r3TV7TsiIMbjqP9GKorV1alg/exec";
+// Use environment variable if available, otherwise fallback to the default script
+export const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzOD6a57z6hASSV6J4YPh0aeRMWSxFXhqyj80yXF7Cq92r3TV7TsiIMbjqP9GKorV1alg/exec";
+
+if (!process.env.GOOGLE_SCRIPT_URL) {
+  console.warn('GOOGLE_SCRIPT_URL environment variable is not set. Using fallback URL. Data may not persist correctly on your own sheet.');
+}
 
 /**
  * Validates the Google Script URL
@@ -42,7 +46,9 @@ export async function fetchFromSheets() {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // Increased to 30 second timeout for GET
+    // Vercel free tier has a 10s timeout. We set our fetch timeout to 9s 
+    // to allow time to return an error before Vercel kills the process.
+    const timeoutId = setTimeout(() => controller.abort(), 9000); 
 
     const res = await fetch(GOOGLE_SCRIPT_URL, { 
       cache: 'no-store',
@@ -64,7 +70,7 @@ export async function fetchFromSheets() {
       // If the response contains an error, return null to fall back to local DB
       if (data && data.error) {
         console.error('Google Script returned an error:', data.error);
-        return null;
+        return { ...data, _isError: true };
       }
 
       // Check if data is a valid Database structure
@@ -185,9 +191,17 @@ export async function fetchFromSheets() {
         });
       }
       
-      return data;
+      return { ...data, _isSheets: true };
     } else {
       const text = await res.text();
+      const isHtml = text.trim().startsWith('<!DOCTYPE html>') || text.trim().startsWith('<html');
+      
+      if (isHtml) {
+        console.error(`Google Script GET Error: Received HTML instead of JSON. This usually means the script crashed or permissions are incorrect. URL: ${GOOGLE_SCRIPT_URL}`);
+        // Return a special object to indicate HTML error
+        return { _isHtmlError: true, _status: res.status, _text: text.substring(0, 500) };
+      }
+      
       console.error(`Google Script GET Error (Status ${res.status}):`, text.substring(0, 500));
       return null;
     }
@@ -213,7 +227,9 @@ export async function sendToSheets(body: any) {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // Increased to 30 second timeout for POST
+    // Vercel free tier has a 10s timeout. We set our fetch timeout to 9s 
+    // to allow time to return an error before Vercel kills the process.
+    const timeoutId = setTimeout(() => controller.abort(), 9000); 
 
     const res = await fetch(GOOGLE_SCRIPT_URL, {
       method: 'POST',
