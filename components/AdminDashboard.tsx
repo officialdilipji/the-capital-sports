@@ -835,9 +835,11 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                       <p className="text-xs opacity-80">
                         {db._sync.isSheets 
                           ? 'All data is synchronized with your spreadsheet.' 
-                          : db._sync.isHtmlError 
-                            ? 'Google Script returned an error page. Check your deployment settings.' 
-                            : 'Failed to connect to Google Sheets. Data will not persist on Vercel.'}
+                          : db._sync.isLoginError
+                            ? 'CRITICAL: Google Script requires login. Set "Who has access" to "Anyone" in your deployment.'
+                            : db._sync.isHtmlError 
+                              ? 'Google Script returned an error page. Check your deployment settings.' 
+                              : 'Failed to connect to Google Sheets. Data will not persist on Vercel.'}
                       </p>
                     </div>
                   </div>
@@ -1234,7 +1236,8 @@ export default function AdminDashboard({ db, onUpdate, role }: { db: Database, o
                     <p className="text-xs text-slate-600">
                       <strong>URL Source:</strong> {db._sync?.url || 'Unknown'}<br/>
                       {db._sync?.error && <><strong>Error:</strong> {db._sync.error}<br/></>}
-                      {db._sync?.isHtmlError && <span className="text-red-600 font-bold">CRITICAL: Received HTML instead of JSON. This means your Google Script is returning an error page.</span>}
+                      {db._sync?.isLoginError && <span className="text-red-600 font-bold">CRITICAL: Your Google Script is asking for a login. You MUST set &quot;Who has access&quot; to &quot;Anyone&quot; in the deployment settings.</span>}
+                      {db._sync?.isHtmlError && !db._sync?.isLoginError && <span className="text-red-600 font-bold">CRITICAL: Received HTML instead of JSON. This means your Google Script is returning an error page.</span>}
                     </p>
                   </div>
 

@@ -24,6 +24,7 @@ export async function GET() {
         isSheets: !!sheetData._isSheets,
         error: sheetData.error || null,
         isHtmlError: !!sheetData._isHtmlError,
+        isLoginError: !!sheetData._isLoginError,
         status: sheetData._status || null,
         url: process.env.GOOGLE_SCRIPT_URL ? 'Configured' : 'Fallback'
       }

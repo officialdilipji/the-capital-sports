@@ -104,6 +104,7 @@ export interface Database {
     isSheets: boolean;
     error: string | null;
     isHtmlError?: boolean;
+    isLoginError?: boolean;
     status?: number | null;
     url?: string;
   };

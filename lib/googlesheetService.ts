@@ -53,7 +53,8 @@ export async function fetchFromSheets() {
     const res = await fetch(GOOGLE_SCRIPT_URL, { 
       cache: 'no-store',
       headers: { 'Accept': 'application/json' },
-      signal: controller.signal
+      signal: controller.signal,
+      redirect: 'follow'
     });
     clearTimeout(timeoutId);
     
@@ -197,6 +198,11 @@ export async function fetchFromSheets() {
       const isHtml = text.trim().startsWith('<!DOCTYPE html>') || text.trim().startsWith('<html');
       
       if (isHtml) {
+        const isLoginPage = text.includes('Sign in') || text.includes('login') || text.includes('ServiceLogin');
+        if (isLoginPage) {
+          console.error(`Google Script GET Error: Received a Google Login page. This means 'Who has access' is NOT set to 'Anyone'. URL: ${GOOGLE_SCRIPT_URL}`);
+          return { _isHtmlError: true, _isLoginError: true, _status: res.status };
+        }
         console.error(`Google Script GET Error: Received HTML instead of JSON. This usually means the script crashed or permissions are incorrect. URL: ${GOOGLE_SCRIPT_URL}`);
         // Return a special object to indicate HTML error
         return { _isHtmlError: true, _status: res.status, _text: text.substring(0, 500) };

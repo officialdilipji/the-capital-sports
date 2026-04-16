@@ -4,6 +4,9 @@ import { Database } from './types';
 
 const DB_PATH = path.join(process.cwd(), 'database.json');
 
+// In-memory cache for Vercel/Serverless environments where filesystem is read-only
+let memoryDb: Database | null = null;
+
 const initialData: Database = {
   members: [],
   staff: [
@@ -29,20 +32,33 @@ const initialData: Database = {
 };
 
 export function getDb(): Database {
+  // If we have it in memory, return it (useful for the duration of a single request/warm lambda)
+  if (memoryDb) return memoryDb;
+
   try {
+    let data: string;
+    
     if (!fs.existsSync(DB_PATH)) {
-      fs.writeFileSync(DB_PATH, JSON.stringify(initialData, null, 2));
+      // Try to write initial data, but don't crash if it fails (e.g. on Vercel)
+      try {
+        fs.writeFileSync(DB_PATH, JSON.stringify(initialData, null, 2));
+      } catch (e) {
+        console.warn('Could not write initial database.json (likely read-only filesystem). Using in-memory data.');
+      }
+      memoryDb = initialData;
       return initialData;
     }
-    const data = fs.readFileSync(DB_PATH, 'utf-8');
+
+    data = fs.readFileSync(DB_PATH, 'utf-8');
     if (!data.trim()) {
+      memoryDb = initialData;
       return initialData;
     }
+    
     const parsed = JSON.parse(data);
     
     // Ensure all required keys exist by merging with initialData
-    // CRITICAL: If staff is empty in the parsed data, use initialData.staff to prevent lockout
-    return {
+    const db = {
       ...initialData,
       ...parsed,
       members: Array.isArray(parsed.members) ? parsed.members : initialData.members,
@@ -53,12 +69,25 @@ export function getDb(): Database {
       maintenanceLogs: Array.isArray(parsed.maintenanceLogs) ? parsed.maintenanceLogs : initialData.maintenanceLogs,
       adminConfig: parsed.adminConfig || initialData.adminConfig,
     };
+
+    memoryDb = db;
+    return db;
   } catch (error) {
     console.error('getDb error:', error);
+    memoryDb = initialData;
     return initialData;
   }
 }
 
 export function saveDb(data: Database) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+  // Always update memory cache
+  memoryDb = data;
+
+  try {
+    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+  } catch (error) {
+    // On Vercel, this will fail with EROFS. We log it but don't throw, 
+    // so the rest of the request (like syncing to Google Sheets) can continue.
+    console.warn('saveDb: Could not write to filesystem (EROFS). Data will only persist if Google Sheets is configured.');
+  }
 }

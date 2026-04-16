@@ -50,8 +50,16 @@ If you make any changes to the script code, you **MUST** create a new deployment
 *If you don't do this, the URL will continue to run the old (broken) version of your code.*
 
 ### ⚠️ Troubleshooting "Unexpected token '<'" or HTML Error
-If you see an error about `Unexpected token '<'` or an HTML response, it means the Google Script is crashing.
-1. **Check the "Executions" tab**: In the Google Apps Script editor, click the **Executions** icon (clock) on the left. This will show you the exact error message (e.g., "Sheet not found").
+If you see an error about `Unexpected token '<'` or an HTML response, it means the Google Script is returning a Google Login page or an error page.
+
+1. **CRITICAL: Permissions Check**: 
+   - Go to **Deploy** > **Manage Deployments**.
+   - Edit your active deployment.
+   - Ensure **"Who has access"** is set to **"Anyone"**. 
+   - **DO NOT** set it to "Anyone with a Google Account" or "Only me". It must be **"Anyone"**.
+   - If you change this, you **MUST** create a "New Version" in the deployment dialog.
+
+2. **Check the "Executions" tab**: In the Google Apps Script editor, click the **Executions** icon (clock) on the left. This will show you the exact error message (e.g., "Sheet not found").
 2. **Bound Script**: Ensure you created the script by going to **Extensions > Apps Script** *inside* the Google Sheet. If you created a standalone script, it won't be able to find the spreadsheet.
 3. **Permissions**: Ensure "Who has access" is set to **Anyone**.
 
